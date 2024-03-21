@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 crossterm = "0.27.0"
 ratatui = "0.26.1"
+fakeit = "1.1"
+unicode-width = "0.1"
+itertools = "0.12"
