@@ -1,11 +1,15 @@
 // use fakeit::{last_taken, contact, vitamin};
+use std::path::Path;
+use std::io::Write;
+use std::fs::File;
+use serde::{Serialize,Deserialize};
 use crossterm::{terminal::{disable_raw_mode,enable_raw_mode,LeaveAlternateScreen,EnterAlternateScreen},
-event::{self,Event,KeyCode,KeyEventKind,EnableMouseCapture,DisableMouseCapture},
+event::{self,Event,KeyEvent,KeyCode,KeyModifiers,KeyEventKind,EnableMouseCapture,DisableMouseCapture},
 execute,};
 use ratatui::{prelude::*,widgets::*};
 // use std::error::Error;
 use itertools::Itertools;
-use std::io::{Result,stdout};
+use std::{io::{stdout, Result}, path};
 use style::palette::tailwind;
 use unicode_width::UnicodeWidthStr;
 const PALETTES: [tailwind::Palette; 4] = [
@@ -40,6 +44,7 @@ impl TableColors {
             footer_border_color: color.c400,
         }
 }}
+#[derive(Debug,Serialize,Deserialize)]
 struct Vitamin {
     vitamin: String,
     last_taken: String,
@@ -173,27 +178,41 @@ terminal.show_cursor()?;
 if let Err(err) = res {
     println!("{err:?}");
 }
-
 Ok(())
 }
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> Result<()>{
+    let path =Path::new("data.txt");
+    let mut data_file=File::create(&path)?;
+    let serialized = serde_json::to_string(&data_file).unwrap();
     loop {
-    terminal.draw(|f| ui(f, &mut app))?;
-    if let Event::Key(key) = event::read()? {
-        if key.kind == KeyEventKind::Press {
-            use KeyCode::*;
-            match key.code {
-                Char('q') | Esc => return Ok(()),
-                Char('j') | Down => app.next(),
-                Char('k') | Up => app.previous(),
-                Char('l') | Right => app.next_color(),
-                Char('h') | Left => app.previous_color(),
-                _ => {}
+        terminal.draw(|f| ui(f, &mut app))?;
+        let key = event::read()?;
+        // if let Event::Key(key) = event::read()? {
+            // if key.kind == KeyEventKind::Press {
+                match key{
+                    Event::Key(KeyEvent{
+                        modifiers:KeyModifiers::CONTROL,
+                        code:KeyCode::Char('s'),
+                        ..})=>
+                        data_file.write_all(serialized.as_bytes())?,
+                        Event::Key(KeyEvent{
+                            modifiers:KeyModifiers::CONTROL,
+                            code:KeyCode::Char('q'),
+                            ..})  => return Ok(()),
+                        Event::Key(KeyEvent{code:KeyCode::Down,..}) => app.next(),
+                        Event::Key(KeyEvent{code:KeyCode::Up,..}) => app.previous(),
+                        Event::Key(KeyEvent{code:KeyCode::Right,..}) => app.next_color(),
+                        Event::Key(KeyEvent{code:KeyCode::Left,..}) => app.previous_color(),
+                        _ => {}
+                    // }}
+
             }
-        }
-    }
-}
-}
+            // match key.code {
+            }
+        // }
+    // }
+
+
 fn ui(f: &mut Frame, app: &mut App) {
     let rects = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(f.size());
 
@@ -305,7 +324,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
                 .border_type(BorderType::Double),
         );
     f.render_widget(info_footer, area);
-}
+}}
 
 
 
